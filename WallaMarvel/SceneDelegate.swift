@@ -1,4 +1,5 @@
 import UIKit
+import FactoryKit
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     var window: UIWindow?
@@ -6,6 +7,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         guard let windowScene = (scene as? UIWindowScene) else { return }
 
+        // Enable mock data for UI testing
         #if DEBUG
         if ProcessInfo.processInfo.environment["UITEST_USE_MOCK"] == "1" {
             Container.shared.useMocks(getHeroesUseCase: UITestMockUseCase())

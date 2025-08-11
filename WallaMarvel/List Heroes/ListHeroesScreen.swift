@@ -1,11 +1,13 @@
 import Foundation
 import SwiftUI
 
+/// SwiftUI screen displaying paginated list of Marvel heroes with search
 struct ListHeroesScreen: View {
     @StateObject private var store: ListHeroesUIStore
     @State private var searchText: String = ""
     @State private var searchTask: Task<Void, Never>? = nil
 
+    /// Initialize with presenter dependency
     init(presenter: ListHeroesPresenterProtocol) {
         _store = StateObject(wrappedValue: ListHeroesUIStore(presenter: presenter))
     }
@@ -14,6 +16,7 @@ struct ListHeroesScreen: View {
         NavigationStack {
             List {
                 Section {
+                    // Hero list with tap and pagination handling
                     ForEach(store.items, id: \.id) { model in
                         HeroRowView(model: model)
                             .contentShape(Rectangle())
@@ -21,6 +24,7 @@ struct ListHeroesScreen: View {
                             .onAppear { store.loadMoreIfNeeded(for: model.id) }
                     }
                 } footer: {
+                    // Pagination loading indicator
                     if store.isPaginating && !store.items.isEmpty {
                         HStack {
                             Spacer()
@@ -46,6 +50,7 @@ struct ListHeroesScreen: View {
             .animation(.default, value: store.isLoading)
             .navigationTitle(store.screenTitle)
             .overlay(alignment: .top) {
+                // Loading indicators
                 if store.isLoading && store.items.isEmpty {
                     ProgressView()
                 } else if store.isLoading {
@@ -64,6 +69,7 @@ struct ListHeroesScreen: View {
                 }
             }
             .overlay {
+                // Error state with retry option
                 if store.items.isEmpty,
                    let msg = store.errorMessage,
                    !msg.isEmpty,
@@ -100,6 +106,7 @@ struct ListHeroesScreen: View {
                 await store.refreshAwaitingCompletion()
             }
             .onChange(of: searchText) { _, newValue in
+                // Debounced search to avoid excessive API calls
                 searchTask?.cancel()
                 searchTask = Task {
                     try? await Task.sleep(nanoseconds: 350_000_000)

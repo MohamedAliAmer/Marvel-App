@@ -1,10 +1,12 @@
 import Foundation
 
+/// Protocol defining Marvel API client interface
 protocol APIClientProtocol {
     func getHeroes(offset: Int, limit: Int, nameStartsWith: String?) async throws -> CharacterDataContainer
     func getHeroDetailsRaw(heroId: Int) async throws -> CharacterDataContainer
 }
 
+/// API-specific error types
 enum APIError: Error, LocalizedError {
     case invalidURL
     case invalidKeys
@@ -23,6 +25,7 @@ enum APIError: Error, LocalizedError {
     }
 }
 
+/// Marvel API client with authentication, retry logic, and error handling
 final class APIClient: APIClientProtocol {
     private let baseURL = URL(string: "https://gateway.marvel.com/v1/public")!
     private let cfg: APIConfiguration
@@ -40,6 +43,7 @@ final class APIClient: APIClientProtocol {
         self.logger = logger
     }
 
+    /// Generates Marvel API authentication query items with hash
     private func authQueryItems() throws -> [URLQueryItem] {
         guard !cfg.publicKey.isEmpty, !cfg.privateKey.isEmpty else { throw APIError.invalidKeys }
         let ts = tsProvider.now()
@@ -51,6 +55,7 @@ final class APIClient: APIClientProtocol {
         ]
     }
 
+    /// Builds authenticated URL request for Marvel API
     private func request(path: String, query: [URLQueryItem]) throws -> URLRequest {
         var comps = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false)
         comps?.queryItems = try authQueryItems() + query
@@ -58,6 +63,7 @@ final class APIClient: APIClientProtocol {
         return URLRequest(url: url, cachePolicy: .useProtocolCachePolicy, timeoutInterval: 30)
     }
 
+    /// Executes HTTP request with exponential backoff retry for transient failures
     private func execute<T: Decodable>(_ request: URLRequest) async throws -> T {
         var attempt = 0
         let maxAttempts = 3
@@ -67,7 +73,7 @@ final class APIClient: APIClientProtocol {
             do {
                 let (data, response) = try await session.data(for: request)
                 if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
-                    // Retry on 5xx
+                    // Retry on 5xx server errors
                     if (500...599).contains(http.statusCode), attempt < (maxAttempts - 1) {
                         attempt += 1
                         let delay = pow(2.0, Double(attempt)) * 0.3 // 0.6s, 1.2s
@@ -85,6 +91,7 @@ final class APIClient: APIClientProtocol {
                 }
                 return try decoder.decode(T.self, from: data)
             } catch let urlError as URLError {
+                // Retry transient network errors
                 if urlError.isTransient && attempt < (maxAttempts - 1) {
                     attempt += 1
                     let delay = pow(2.0, Double(attempt)) * 0.3
@@ -118,6 +125,7 @@ final class APIClient: APIClientProtocol {
         }
     }
 
+    /// Fetches paginated heroes list with optional name filtering
     func getHeroes(offset: Int, limit: Int, nameStartsWith: String?) async throws -> CharacterDataContainer {
         var items: [URLQueryItem] = [
             URLQueryItem(name: "offset", value: String(offset)),
@@ -130,12 +138,14 @@ final class APIClient: APIClientProtocol {
         return try await execute(req)
     }
 
+    /// Fetches detailed information for a specific hero
     func getHeroDetailsRaw(heroId: Int) async throws -> CharacterDataContainer {
         let req = try request(path: "characters/\(heroId)", query: [])
         return try await execute(req)
     }
 }
 
+/// Extension to identify transient network errors suitable for retry
 private extension URLError {
     var isTransient: Bool {
         switch self.code {

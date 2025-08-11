@@ -1,70 +1,98 @@
 # WallaMarvel iOS Technical Test Implementation
 
+## Overview
+
+This Marvel heroes app demonstrates modern iOS development practices with clean architecture, robust error handling, and excellent user experience. The implementation showcases a scalable approach suitable for production applications.
+
+## Architecture & Design Decisions
+
+### Clean Architecture with MVP Pattern
+- **Separation of Concerns**: Clear boundaries between Data, Domain, and Presentation layers
+- **MVP Implementation**: Presenter handles business logic, View manages UI state, Model represents data
+- **Dependency Injection**: Uses Factory library for loose coupling and testability
+- **Protocol-Oriented**: Interfaces define contracts between layers for flexibility
+
+### Modern Swift Concurrency
+- **async/await**: Complete migration from completion handlers for cleaner, more maintainable code
+- **Structured Concurrency**: Proper task management with cancellation support
+- **Actor Model**: Thread-safe state management where needed
+- **Retry Logic**: Exponential backoff for transient network failures
+
+### State Management Strategy
+- **SwiftUI + ObservableObject**: Reactive UI updates with `@Published` properties
+- **Single Source of Truth**: `ListHeroesUIStore` centralizes UI state
+- **Debounced Search**: Prevents excessive API calls during user typing
+- **Pagination State**: Tracks loading states for smooth infinite scroll
+
+### Error Handling Philosophy
+- **Typed Errors**: Specific error types for different failure scenarios
+- **User-Friendly Messages**: Technical errors translated to actionable user feedback
+- **Graceful Degradation**: App remains functional even when some features fail
+- **Retry Mechanisms**: Automatic retries for transient failures, manual retry for permanent ones
+
+### Performance Optimizations
+- **Image Caching**: URL caching configured for efficient image loading
+- **Pagination**: Load data incrementally to reduce initial load time
+- **Prefetching**: Anticipate user scrolling to preload content
+- **Debouncing**: Reduce API calls during rapid user input
+
 ## Features Implemented
 
-1. **Hero Detail View**
-   - When a user taps on a superhero in the list, the app navigates to a detail screen showing:
-     - Hero name
-     - Hero description
-     - Hero image (low-res -> high-res swap with smooth fade-in)
-     - Comics count
-     - Series count
-     - Stories count
-     - Events count
-     - Lists of comics, series, stories, and events (with "show more" toggle)
+### 1. Hero List with Search & Pagination
+- **Infinite Scroll**: Automatic loading of additional heroes when approaching list end
+- **Debounced Search**: 350ms delay prevents excessive API calls while typing
+- **Loading States**: Different indicators for initial load, pagination, and search
+- **Error Recovery**: Retry options when requests fail
 
-2. **Pagination**
-   - When reaching the bottom of the superhero list, additional heroes are loaded automatically.
-   - Spinner is shown at the bottom during pagination.
-   - Minimum display time for loading indicators to improve UX.
+### 2. Hero Detail View
+- **Progressive Image Loading**: Low-resolution to high-resolution image transitions
+- **Comprehensive Information**: Name, description, and related content counts
+- **Expandable Sections**: Comics, series, stories, and events with "show more" functionality
+- **Smooth Navigation**: Natural flow between list and detail screens
 
-3. **Search Functionality**
-   - Search bar allows filtering heroes by name.
-   - Search requests are **debounced** in the store for efficiency.
-   - Cancelling search resets the list.
+### 3. Robust Network Layer
+- **Authentication**: Marvel API hash-based authentication with timestamp
+- **Retry Logic**: Exponential backoff for 5xx errors and transient network issues
+- **Request Cancellation**: Prevents unnecessary network calls during rapid user actions
+- **Timeout Handling**: 30-second timeouts with appropriate error messaging
 
-4. **Modern Concurrency**
-   - Refactored the codebase to use Swift Concurrency (async/await) for handling asynchronous operations.
-   - Retry with exponential backoff for transient network errors.
-   - Cancellable in-flight requests for better search and refresh UX.
+### 4. Accessibility & User Experience
+- **VoiceOver Support**: Proper accessibility labels and hints
+- **Dynamic Type**: Supports user font size preferences
+- **Loading Feedback**: Clear indicators for all loading states
+- **Error Messages**: Contextual, actionable error information
 
-5. **Error Handling**
-   - Improved error handling throughout the app with user-friendly error messages.
-   - Displays retry option when initial load fails.
-   - Clears previous errors upon successful load.
+### 5. Testing Infrastructure
+- **Dependency Injection**: Easy mocking for unit tests
+- **UI Test Support**: Mock data provider for consistent UI testing
+- **Protocol-Based Design**: Testable components with clear interfaces
+- **Structured Logging**: Comprehensive logging for debugging and monitoring
 
-6. **Logging**
-   - Added structured logging with injectable service provider.
-   - Logs include app metadata and error context.
+## Technical Implementation Details
 
-7. **Improved UI**
-   - Smooth image transitions in hero detail screen.
-   - Pagination spinner footer.
-   - Compact top overlay loader for background searches.
-   - Accessibility labels and identifiers for UI tests.
+### Data Layer
+- **API Client**: `APIClient` handles all network requests with async/await
+- **Authentication**: Timestamp-based hash generation for Marvel API
+- **Retry Logic**: Exponential backoff with jitter for transient errors
+- **Timeouts**: 30-second timeout with cancellation support
+- **Caching**: URL caching configured for efficient image loading
 
-## Architecture Improvements
+### Presentation Layer
+- **MVP Pattern**: `ListHeroesPresenter` handles business logic
+- **UI Store**: `ListHeroesUIStore` manages UI state with debounced search
+- **SwiftUI Views**: `HeroListView` and `HeroDetailView` for declarative UI
+- **Navigation**: SwiftUI NavigationStack for smooth transitions
 
-- Refactored to use **async/await** throughout the data layer.
-- Improved error handling with proper error types and retry logic.
-- Flattened repository/data source into API client for simplicity.
-- Enhanced data models to include more information from the Marvel API.
-- Introduced **ListHeroesUIStore** for state management and search debounce.
-- MVP pattern with SwiftUI UI layer.
-- Dependency injection via `Factory` library.
-- Cancelable background tasks for search, refresh, and pagination.
+### State Management
+- **ObservableObject**: `ListHeroesUIStore` for reactive UI updates
+- **Debounced Search**: 350ms delay prevents excessive API calls
+- **Pagination State**: Tracks loading states for smooth infinite scroll
 
-## Files Modified
-
-### Core Implementation Files
-- `ListHeroesModule.swift` – Complete integration of API, presenter, store, SwiftUI views, and DI in a single cohesive module.
-- `HeroDetailScreen.swift` – Detailed hero view with hi-res image fade-in and expandable lists.
-
-### New / Updated Functionality
-- Integrated **search debounce** inside `ListHeroesUIStore`.
-- Added **retry/backoff** logic to `APIClient`.
-- Added **structured logging**.
-- Improved pagination UX with minimum spinner visibility.
+### Error Handling
+- **Typed Errors**: Specific error types for different failure scenarios
+- **User-Friendly Messages**: Technical errors translated to actionable user feedback
+- **Graceful Degradation**: App remains functional even when some features fail
+- **Retry Mechanisms**: Automatic retries for transient failures, manual retry for permanent ones
 
 ## Setup Instructions
 
@@ -73,18 +101,6 @@
 3. Marvel API keys are configured via `Info.plist`:
    - `MARVEL_PUBLIC_KEY`
    - `MARVEL_PRIVATE_KEY`
-
-## Known Limitations
-
-- Requires manual addition of any missing Swift files to the Xcode project.
-- Kingfisher is no longer required — now uses SwiftUI's `AsyncImage`.
-
-## Usage Notes
-
-- App automatically loads heroes when launched.
-- Scroll to the bottom to load more heroes (pagination).
-- Use the search bar to filter heroes by name (debounced).
-- Tap on any hero to view details (low-res image swaps to high-res with smooth transition).
 
 ## Marvel API Notes
 
